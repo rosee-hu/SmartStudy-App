@@ -1,20 +1,16 @@
-//
-//  SmartStudyApp.swift
-//  SmartStudy
-//
-//  Created by rose Hu on 10/05/2025.
-//
-
 import SwiftUI
 
 @main
 struct SmartStudyApp: App {
-    let persistenceController = PersistenceController.shared
+    @AppStorage("isLoggedIn") var isLoggedIn = false  // Check if the user is logged in
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environment(\.managedObjectContext, persistenceController.container.viewContext)
+            if isLoggedIn {
+                DashboardView()  // Show dashboard if logged in
+            } else {
+                AuthView()  // Show login screen if not logged in
+            }
         }
     }
 }

@@ -1,32 +1,42 @@
-//
-//  ContentView.swift
-//  SmartStudy
-//
-//  Created by rose Hu on 10/05/2025.
-//
-
 import SwiftUI
 import CoreData
 
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
 
-    @FetchRequest(
-        sortDescriptors: [NSSortDescriptor(keyPath: \Item.timestamp, ascending: true)],
-        animation: .default)
-    private var items: FetchedResults<Item>
+    // Fetch requests for Assignments and Exams
+    @FetchRequest(entity: Assignment.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \Assignment.deadlineDate, ascending: true)], animation: .default)
+    private var assignments: FetchedResults<Assignment>
+    
+    @FetchRequest(entity: Exam.entity(), sortDescriptors: [NSSortDescriptor(keyPath: \Exam.date, ascending: true)], animation: .default)
+    private var exams: FetchedResults<Exam>
 
     var body: some View {
         NavigationView {
             List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp!, formatter: itemFormatter)")
-                    } label: {
-                        Text(item.timestamp!, formatter: itemFormatter)
+                // Display Assignments
+                Section(header: Text("Assignments")) {
+                    ForEach(assignments) { assignment in
+                        NavigationLink {
+                            Text("Assignment: \(assignment.title ?? "Untitled") - Due: \(formatDate(assignment.deadlineDate))")
+                        } label: {
+                            Text("\(assignment.title ?? "Untitled") - Due: \(formatDate(assignment.deadlineDate))")
+                        }
                     }
+                    .onDelete(perform: deleteAssignments)
                 }
-                .onDelete(perform: deleteItems)
+
+                // Display Exams
+                Section(header: Text("Exams")) {
+                    ForEach(exams) { exam in
+                        NavigationLink {
+                            Text("Exam: \(exam.title ?? "Untitled") - Date: \(formatDate(exam.date))")
+                        } label: {
+                            Text("\(exam.title ?? "Untitled") - Date: \(formatDate(exam.date))")
+                        }
+                    }
+                    .onDelete(perform: deleteExams)
+                }
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -42,44 +52,58 @@ struct ContentView: View {
         }
     }
 
+    // Helper function to format dates
+    private func formatDate(_ date: Date?) -> String {
+        guard let date = date else { return "Unknown Date" }
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+
+    // Add new item (for assignments and exams)
     private func addItem() {
         withAnimation {
-            let newItem = Item(context: viewContext)
-            newItem.timestamp = Date()
+            // For example, adding a new Assignment (you can adjust this for Exams)
+            let newAssignment = Assignment(context: viewContext)
+            newAssignment.title = "New Assignment"
+            newAssignment.deadlineDate = Date()
 
             do {
                 try viewContext.save()
             } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
                 let nsError = error as NSError
                 fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
             }
         }
     }
 
-    private func deleteItems(offsets: IndexSet) {
+    // Delete selected assignments
+    private func deleteAssignments(offsets: IndexSet) {
         withAnimation {
-            offsets.map { items[$0] }.forEach(viewContext.delete)
+            offsets.map { assignments[$0] }.forEach(viewContext.delete)
+            saveContext()
+        }
+    }
 
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
-            }
+    // Delete selected exams
+    private func deleteExams(offsets: IndexSet) {
+        withAnimation {
+            offsets.map { exams[$0] }.forEach(viewContext.delete)
+            saveContext()
+        }
+    }
+
+    // Save context after adding/deleting
+    private func saveContext() {
+        do {
+            try viewContext.save()
+        } catch {
+            let nsError = error as NSError
+            fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
         }
     }
 }
-
-private let itemFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.dateStyle = .short
-    formatter.timeStyle = .medium
-    return formatter
-}()
 
 #Preview {
     ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
